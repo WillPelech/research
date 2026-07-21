@@ -1,0 +1,48 @@
+name: Weekly Research Digest
+
+on:
+  schedule:
+    # Mondays at 13:00 UTC (~9am ET / 6am PT)
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and send digest
+        env:
+          DIGEST_TO_EMAIL: ${{ secrets.DIGEST_TO_EMAIL }}
+          DIGEST_FROM_EMAIL: ${{ secrets.DIGEST_FROM_EMAIL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_TLS: ${{ secrets.SMTP_USE_TLS }}
+          LOOKBACK_DAYS: "7"
+          TOP_PER_TRACK: "6"
+        run: python run_digest.py
+
+      - name: Commit digest archive
+        run: |
+          git config user.name "research-digest[bot]"
+          git config user.email "research-digest[bot]@users.noreply.github.com"
+          git add digests/*.md
+          if git diff --staged --quiet; then
+            echo "No digest changes to commit"
+          else
+            git commit -m "Add weekly research digest"
+            git push
+          fi
