@@ -31,8 +31,6 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_USE_TLS: ${{ secrets.SMTP_USE_TLS }}
-          LOOKBACK_DAYS: "7"
-          TOP_PER_TRACK: "6"
         run: python run_digest.py
 
       - name: Commit digest archive

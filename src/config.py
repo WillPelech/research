@@ -1,4 +1,4 @@
-"""Weekly research digest configuration."""
+"""Weekly AI blog digest configuration."""
 
 from __future__ import annotations
 
@@ -7,65 +7,112 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class Track:
-    """A topical search bucket for the digest."""
+class Feed:
+    """A curated blog / research feed."""
 
     key: str
     title: str
-    query: str
-    boost_terms: tuple[str, ...]
+    author: str
+    focus: str
+    cadence: str
+    url: str
+    # How far back to include posts from this source (days).
+    lookback_days: int
+    # Cap posts per source so high-volume feeds don't dominate.
+    max_items: int
 
 
-# Lightweight arXiv queries: recent + relevant, not exhaustive.
-TRACKS: tuple[Track, ...] = (
-    Track(
-        key="ai_models",
-        title="AI Models",
-        query=(
-            "(cat:cs.LG OR cat:cs.CL OR cat:cs.AI OR cat:cs.CV) AND "
-            "(ti:\"large language model\" OR ti:\"foundation model\" OR "
-            'ti:"language model" OR ti:LLM OR abs:"foundation model" OR '
-            'ti:multimodal OR ti:"mixture of experts" OR ti:MoE OR '
-            'ti:reasoning OR abs:"chain of thought")'
-        ),
-        boost_terms=(
-            "foundation model",
-            "large language model",
-            "llm",
-            "multimodal",
-            "mixture of experts",
-            "reasoning",
-            "scaling",
-            "alignment",
-            "post-training",
-            "rlhf",
-            "inference",
-        ),
+# Curated sources — RSS only, no arXiv.
+FEEDS: tuple[Feed, ...] = (
+    Feed(
+        key="openai",
+        title="OpenAI Blog",
+        author="OpenAI Research Team",
+        focus="Frontier AI research, safety, product updates",
+        cadence="Weekly",
+        url="https://openai.com/news/rss.xml",
+        lookback_days=7,
+        max_items=5,
     ),
-    Track(
-        key="harness",
-        title="Harness & Agents",
-        query=(
-            "(cat:cs.AI OR cat:cs.LG OR cat:cs.SE OR cat:cs.CL) AND "
-            '(ti:harness OR ti:agent OR abs:"agentic" OR ti:scaffold OR '
-            'ti:"tool use" OR ti:tool-use OR ti:"software engineering" OR '
-            'ti:SWE-bench OR abs:"coding agent" OR abs:"evaluation harness" OR '
-            'abs:"agent framework" OR ti:benchmark)'
-        ),
-        boost_terms=(
-            "harness",
-            "agent",
-            "agentic",
-            "scaffold",
-            "tool use",
-            "tool-calling",
-            "swe-bench",
-            "coding agent",
-            "evaluation harness",
-            "agent framework",
-            "orchestration",
-            "multi-agent",
-        ),
+    Feed(
+        key="deepmind",
+        title="Google DeepMind Blog",
+        author="DeepMind Research Team",
+        focus="Scientific AI, reinforcement learning, breakthroughs",
+        cadence="Weekly",
+        url="https://deepmind.google/blog/rss.xml",
+        lookback_days=7,
+        max_items=5,
+    ),
+    Feed(
+        key="lilian_weng",
+        title="Lilian Weng's Blog",
+        author="Lilian Weng (OpenAI)",
+        focus="Technical deep dives and concept explainers",
+        cadence="Monthly",
+        url="https://lilianweng.github.io/index.xml",
+        lookback_days=35,
+        max_items=2,
+    ),
+    Feed(
+        key="ahead_of_ai",
+        title="Ahead of AI",
+        author="Sebastian Raschka",
+        focus="LLM implementation, hands-on tutorials and code",
+        cadence="Weekly",
+        url="https://magazine.sebastianraschka.com/feed",
+        lookback_days=7,
+        max_items=3,
+    ),
+    Feed(
+        key="jay_alammar",
+        title="Jay Alammar's Blog",
+        author="Jay Alammar",
+        focus="Visual AI education for beginners and practitioners",
+        cadence="Monthly",
+        url="https://jalammar.github.io/feed.xml",
+        lookback_days=35,
+        max_items=2,
+    ),
+    Feed(
+        key="huggingface",
+        title="Hugging Face Blog",
+        author="Hugging Face Team",
+        focus="Open-source models, releases, and tutorials",
+        cadence="Multiple per week",
+        url="https://huggingface.co/blog/feed.xml",
+        lookback_days=7,
+        max_items=5,
+    ),
+    Feed(
+        key="gradient",
+        title="The Gradient",
+        author="AI Research Community",
+        focus="Research analysis, paper summaries, interviews",
+        cadence="Weekly",
+        url="https://thegradient.pub/rss/",
+        lookback_days=14,
+        max_items=3,
+    ),
+    Feed(
+        key="bair",
+        title="BAIR Blog",
+        author="UC Berkeley AI Research",
+        focus="Cutting-edge academic AI research",
+        cadence="Bi-weekly",
+        url="https://bair.berkeley.edu/blog/feed.xml",
+        lookback_days=14,
+        max_items=3,
+    ),
+    Feed(
+        key="karpathy",
+        title="Andrej Karpathy's Blog",
+        author="Andrej Karpathy",
+        focus="Deep learning systems and practical ML",
+        cadence="Occasional",
+        url="https://karpathy.github.io/feed.xml",
+        lookback_days=60,
+        max_items=2,
     ),
 )
 
@@ -80,8 +127,6 @@ class Settings:
     smtp_user: str | None
     smtp_password: str | None
     smtp_use_tls: bool
-    lookback_days: int
-    top_per_track: int
     dry_run: bool
     user_agent: str
 
@@ -98,8 +143,6 @@ class Settings:
             "yes",
         }
         smtp_port_raw = os.environ.get("SMTP_PORT", "").strip() or "587"
-        lookback_raw = os.environ.get("LOOKBACK_DAYS", "").strip() or "7"
-        top_raw = os.environ.get("TOP_PER_TRACK", "").strip() or "6"
         smtp_tls_raw = os.environ.get("SMTP_USE_TLS", "").strip() or "true"
         return cls(
             to_email=to_email,
@@ -110,11 +153,9 @@ class Settings:
             smtp_user=os.environ.get("SMTP_USER") or None,
             smtp_password=os.environ.get("SMTP_PASSWORD") or None,
             smtp_use_tls=smtp_tls_raw.lower() in {"1", "true", "yes"},
-            lookback_days=int(lookback_raw),
-            top_per_track=int(top_raw),
             dry_run=dry,
             user_agent=os.environ.get(
-                "ARXIV_USER_AGENT",
+                "DIGEST_USER_AGENT",
                 "research-digest/1.0 (github.com/WillPelech/research)",
             ),
         )

@@ -1,15 +1,31 @@
-# Research Digest
+# AI Research Digest
 
-Weekly email of the best new arXiv papers on **AI models** and **harness / agent** research. Runs on GitHub Actions — nothing to leave running on your machine.
+Weekly email of new posts from a curated set of AI research blogs. Runs on GitHub Actions — nothing to leave running on your machine.
+
+## Sources
+
+| Source | Focus | Cadence |
+| --- | --- | --- |
+| [OpenAI Blog](https://openai.com/news/) | Frontier research, safety, updates | Weekly |
+| [Google DeepMind](https://deepmind.google/blog/) | Scientific AI, RL | Weekly |
+| [Lilian Weng](https://lilianweng.github.io/) | Technical deep dives | Monthly |
+| [Ahead of AI](https://magazine.sebastianraschka.com/) | LLM implementation / tutorials | Weekly |
+| [Jay Alammar](https://jalammar.github.io/) | Visual AI explainers | Monthly |
+| [Hugging Face](https://huggingface.co/blog) | Open-source models & tutorials | Multiple / week |
+| [The Gradient](https://thegradient.pub/) | Research analysis | Weekly |
+| [BAIR Blog](https://bair.berkeley.edu/blog/) | Academic research | Bi-weekly |
+| [Andrej Karpathy](https://karpathy.github.io/) | DL systems, practical ML | Occasional |
+
+All posts are pulled from each site’s official RSS/Atom feed (configured in [`src/config.py`](src/config.py)).
 
 ## What you get
 
 Every Monday, the workflow:
 
-1. Searches arXiv for recent papers in two tracks (AI models, harness & agents)
-2. Scores them by topical relevance + recency and keeps the top picks
-3. Emails you an HTML digest
-4. Commits a markdown copy under [`digests/`](digests/) so you can also read it on GitHub
+1. Fetches each feed
+2. Keeps recent posts (lookback varies by cadence; high-volume feeds are capped)
+3. Emails you an HTML digest grouped by source
+4. Commits a markdown copy under [`digests/`](digests/)
 
 ## One-time setup
 
@@ -17,35 +33,23 @@ Every Monday, the workflow:
 
 ```bash
 git add .
-git commit -m "Add weekly research digest"
-git push -u origin main
+git commit -m "Switch digest to curated AI blogs"
+git push
 ```
 
 ### 2. Configure email secrets
 
 In the GitHub repo: **Settings → Secrets and variables → Actions**.
 
-**Recommended (Resend, free tier):**
+**Recommended (Resend):**
 
 | Secret | Value |
 | --- | --- |
 | `DIGEST_TO_EMAIL` | Your inbox |
-| `DIGEST_FROM_EMAIL` | A verified Resend from-address, e.g. `Research Digest <digest@yourdomain.com>` |
+| `DIGEST_FROM_EMAIL` | Verified Resend from-address |
 | `RESEND_API_KEY` | From [resend.com](https://resend.com) |
 
-For a quick test you can use Resend’s onboarding sender (`onboarding@resend.dev`) and send only to the email you signed up with.
-
-**Or SMTP** (omit `RESEND_API_KEY`):
-
-| Secret | Example |
-| --- | --- |
-| `DIGEST_TO_EMAIL` | `you@example.com` |
-| `DIGEST_FROM_EMAIL` | `you@gmail.com` |
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_USER` | your Gmail address |
-| `SMTP_PASSWORD` | Gmail app password |
-| `SMTP_USE_TLS` | `true` |
+**Or SMTP** (omit `RESEND_API_KEY`): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`.
 
 ### 3. Run it
 
@@ -54,19 +58,8 @@ For a quick test you can use Resend’s onboarding sender (`onboarding@resend.de
 
 ## Local preview
 
-No dependencies beyond Python 3.11+:
+Python 3.11+, no third-party packages:
 
 ```bash
 python run_digest.py --dry-run
 ```
-
-That writes `digests/<year>-W<week>.md` without sending mail. Copy `.env.example` → `.env` and export vars if you want a real local send.
-
-## Tuning
-
-| Env var | Default | Meaning |
-| --- | --- | --- |
-| `LOOKBACK_DAYS` | `7` | How far back to consider papers |
-| `TOP_PER_TRACK` | `6` | Max papers per track |
-
-Queries and boost terms live in [`src/config.py`](src/config.py).

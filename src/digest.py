@@ -1,4 +1,4 @@
-"""Build and optionally email a weekly research digest."""
+"""Build and optionally email a weekly AI blog digest."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .arxiv_client import search
-from .config import TRACKS, Settings
+from .config import FEEDS, Settings
 from .emailer import send_email
-from .rank import select_papers
+from .feeds import fetch_feed
+from .rank import select_posts
 from .render import render_html, render_markdown, subject_line
 
 
@@ -23,31 +23,30 @@ def week_label(now: datetime) -> str:
 def build_digest(settings: Settings) -> tuple[str, str, str, Path]:
     now = datetime.now(timezone.utc)
     label = week_label(now)
-    sections = []
+    sections: list = []
 
-    for i, track in enumerate(TRACKS):
+    for i, feed in enumerate(FEEDS):
         if i:
-            # arXiv asks for ~3s between requests.
-            time.sleep(3.1)
-        print(f"Searching track: {track.title}", flush=True)
-        raw = search(
-            track.query,
-            track_key=track.key,
-            max_results=50,
-            user_agent=settings.user_agent,
-        )
-        picked = select_papers(
-            raw,
-            track,
-            lookback_days=settings.lookback_days,
-            top_n=settings.top_per_track,
-            now=now,
-        )
-        print(f"  fetched={len(raw)} selected={len(picked)}", flush=True)
-        sections.append((track, picked))
+            time.sleep(0.4)
+        print(f"Fetching: {feed.title}", flush=True)
+        try:
+            raw = fetch_feed(
+                feed.url, feed_key=feed.key, user_agent=settings.user_agent
+            )
+            picked = select_posts(raw, feed, now=now)
+            print(f"  fetched={len(raw)} selected={len(picked)}", flush=True)
+        except Exception as exc:  # noqa: BLE001 — keep other feeds going
+            print(f"  ERROR: {exc}", flush=True)
+            picked = []
+        sections.append((feed, picked))
 
+    # Drop empty sources from the email to keep it readable;
+    # still mention empty ones lightly in markdown archive.
     md = render_markdown(week_label=label, generated_at=now, sections=sections)
-    html = render_html(week_label=label, generated_at=now, sections=sections)
+    email_sections = [(f, p) for f, p in sections if p]
+    if not email_sections:
+        email_sections = sections
+    html = render_html(week_label=label, generated_at=now, sections=email_sections)
     subject = subject_line(label, sections)
 
     out_dir = Path(__file__).resolve().parent.parent / "digests"
@@ -59,7 +58,7 @@ def build_digest(settings: Settings) -> tuple[str, str, str, Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Weekly AI research digest")
+    parser = argparse.ArgumentParser(description="Weekly AI research blog digest")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -78,8 +77,6 @@ def main(argv: list[str] | None = None) -> int:
             smtp_user=settings.smtp_user,
             smtp_password=settings.smtp_password,
             smtp_use_tls=settings.smtp_use_tls,
-            lookback_days=settings.lookback_days,
-            top_per_track=settings.top_per_track,
             dry_run=True,
             user_agent=settings.user_agent,
         )
