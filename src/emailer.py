@@ -21,7 +21,7 @@ def send_email(
 ) -> None:
     if settings.dry_run:
         print("[dry-run] Skipping send")
-        print(f"To: {settings.to_email}")
+        print(f"To: {settings.to_header}")
         print(f"Subject: {subject}")
         return
 
@@ -41,7 +41,7 @@ def _send_resend(
 ) -> None:
     payload = {
         "from": settings.from_email,
-        "to": [settings.to_email],
+        "to": list(settings.recipients),
         "subject": subject,
         "html": html_body,
         "text": text_body,
@@ -78,7 +78,7 @@ def _send_smtp(
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = settings.from_email
-    msg["To"] = settings.to_email
+    msg["To"] = settings.to_header
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype="html")
 
@@ -92,4 +92,4 @@ def _send_smtp(
         with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=45) as smtp:
             smtp.login(settings.smtp_user, settings.smtp_password)
             smtp.send_message(msg)
-    print(f"Sent via SMTP to {settings.to_email}")
+    print(f"Sent via SMTP to {settings.to_header}")

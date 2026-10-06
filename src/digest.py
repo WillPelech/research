@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings.from_env()
     if args.dry_run:
         settings = Settings(
-            to_email=settings.to_email or "dry-run@example.com",
+            recipients=settings.recipients or ("dry-run@example.com",),
             from_email=settings.from_email,
             resend_api_key=settings.resend_api_key,
             smtp_host=settings.smtp_host,

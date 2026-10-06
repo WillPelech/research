@@ -24,6 +24,7 @@ jobs:
       - name: Build and send digest
         env:
           DIGEST_TO_EMAIL: ${{ secrets.DIGEST_TO_EMAIL }}
+          DIGEST_EXTRA_EMAILS: ${{ secrets.DIGEST_EXTRA_EMAILS }}
           DIGEST_FROM_EMAIL: ${{ secrets.DIGEST_FROM_EMAIL }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}

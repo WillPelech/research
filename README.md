@@ -24,7 +24,7 @@ Every Monday, the workflow:
 
 1. Fetches each feed
 2. Keeps recent posts (lookback varies by cadence; high-volume feeds are capped)
-3. Emails you an HTML digest grouped by source
+3. Emails every recipient an HTML digest grouped by source
 4. Commits a markdown copy under [`digests/`](digests/)
 
 ## One-time setup
@@ -45,7 +45,8 @@ In the GitHub repo: **Settings → Secrets and variables → Actions**.
 
 | Secret | Value |
 | --- | --- |
-| `DIGEST_TO_EMAIL` | Your inbox |
+| `DIGEST_TO_EMAIL` | Your inbox (comma-separate for several recipients) |
+| `DIGEST_EXTRA_EMAILS` | Optional extra recipients, merged with the above |
 | `DIGEST_FROM_EMAIL` | Verified Resend from-address |
 | `RESEND_API_KEY` | From [resend.com](https://resend.com) |
 

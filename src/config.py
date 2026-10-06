@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 
@@ -117,9 +118,30 @@ FEEDS: tuple[Feed, ...] = (
 )
 
 
+def _parse_recipients(*raw_values: str) -> tuple[str, ...]:
+    """Split comma/semicolon/whitespace-separated address lists into a tuple.
+
+    Order is preserved and duplicates are dropped (case-insensitively) so the
+    same inbox never gets two copies of the digest.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for raw in raw_values:
+        for addr in re.split(r"[,;\s]+", raw or ""):
+            addr = addr.strip()
+            if not addr:
+                continue
+            key = addr.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(addr)
+    return tuple(out)
+
+
 @dataclass(frozen=True)
 class Settings:
-    to_email: str
+    recipients: tuple[str, ...]
     from_email: str
     resend_api_key: str | None
     smtp_host: str | None
@@ -132,7 +154,10 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> Settings:
-        to_email = os.environ.get("DIGEST_TO_EMAIL", "").strip()
+        recipients = _parse_recipients(
+            os.environ.get("DIGEST_TO_EMAIL", ""),
+            os.environ.get("DIGEST_EXTRA_EMAILS", ""),
+        )
         from_email = (
             os.environ.get("DIGEST_FROM_EMAIL", "").strip()
             or "Research Digest <onboarding@resend.dev>"
@@ -145,7 +170,7 @@ class Settings:
         smtp_port_raw = os.environ.get("SMTP_PORT", "").strip() or "587"
         smtp_tls_raw = os.environ.get("SMTP_USE_TLS", "").strip() or "true"
         return cls(
-            to_email=to_email,
+            recipients=recipients,
             from_email=from_email,
             resend_api_key=os.environ.get("RESEND_API_KEY") or None,
             smtp_host=os.environ.get("SMTP_HOST") or None,
@@ -160,10 +185,15 @@ class Settings:
             ),
         )
 
+    @property
+    def to_header(self) -> str:
+        """Recipients formatted for an RFC 5322 To: header."""
+        return ", ".join(self.recipients)
+
     def require_mail_config(self) -> None:
         if self.dry_run:
             return
-        if not self.to_email:
+        if not self.recipients:
             raise SystemExit("DIGEST_TO_EMAIL is required")
         if self.resend_api_key:
             return
