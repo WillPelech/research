@@ -149,6 +149,7 @@ class Settings:
     smtp_user: str | None
     smtp_password: str | None
     smtp_use_tls: bool
+    provider: str
     dry_run: bool
     user_agent: str
 
@@ -169,6 +170,13 @@ class Settings:
         }
         smtp_port_raw = os.environ.get("SMTP_PORT", "").strip() or "587"
         smtp_tls_raw = os.environ.get("SMTP_USE_TLS", "").strip() or "true"
+        provider = (
+            os.environ.get("DIGEST_EMAIL_PROVIDER", "").strip().lower() or "auto"
+        )
+        if provider not in {"auto", "resend", "smtp"}:
+            raise SystemExit(
+                "DIGEST_EMAIL_PROVIDER must be auto, resend, or smtp"
+            )
         return cls(
             recipients=recipients,
             from_email=from_email,
@@ -178,6 +186,7 @@ class Settings:
             smtp_user=os.environ.get("SMTP_USER") or None,
             smtp_password=os.environ.get("SMTP_PASSWORD") or None,
             smtp_use_tls=smtp_tls_raw.lower() in {"1", "true", "yes"},
+            provider=provider,
             dry_run=dry,
             user_agent=os.environ.get(
                 "DIGEST_USER_AGENT",
@@ -190,12 +199,28 @@ class Settings:
         """Recipients formatted for an RFC 5322 To: header."""
         return ", ".join(self.recipients)
 
+    @property
+    def use_resend(self) -> bool:
+        """Whether to send via Resend.
+
+        "auto" keeps the historical behaviour of preferring Resend whenever
+        an API key is present; an explicit provider always wins, so an
+        unused RESEND_API_KEY secret no longer forces the Resend path.
+        """
+        if self.provider == "resend":
+            return True
+        if self.provider == "smtp":
+            return False
+        return bool(self.resend_api_key)
+
     def require_mail_config(self) -> None:
         if self.dry_run:
             return
         if not self.recipients:
             raise SystemExit("DIGEST_TO_EMAIL is required")
-        if self.resend_api_key:
+        if self.use_resend:
+            if not self.resend_api_key:
+                raise SystemExit("RESEND_API_KEY is required for provider=resend")
             return
         if self.smtp_host and self.smtp_user and self.smtp_password:
             return

@@ -50,7 +50,15 @@ In the GitHub repo: **Settings → Secrets and variables → Actions**.
 | `DIGEST_FROM_EMAIL` | Verified Resend from-address |
 | `RESEND_API_KEY` | From [resend.com](https://resend.com) |
 
-**Or SMTP** (omit `RESEND_API_KEY`): `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`.
+**Or SMTP:** `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`.
+
+Set the repo **variable** `DIGEST_EMAIL_PROVIDER` to `smtp` to force the SMTP path, or
+`resend` to force Resend. Left unset it defaults to `auto`, which uses Resend whenever
+`RESEND_API_KEY` is present.
+
+> Note: Resend only delivers to your own address until you verify a domain at
+> [resend.com/domains](https://resend.com/domains). With multiple recipients on an
+> unverified account the whole send fails, so use SMTP or verify a domain first.
 
 ### 3. Run it
 

@@ -25,7 +25,7 @@ def send_email(
         print(f"Subject: {subject}")
         return
 
-    if settings.resend_api_key:
+    if settings.use_resend:
         _send_resend(settings, subject=subject, html_body=html_body, text_body=text_body)
         return
 

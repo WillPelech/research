@@ -77,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
             smtp_user=settings.smtp_user,
             smtp_password=settings.smtp_password,
             smtp_use_tls=settings.smtp_use_tls,
+            provider=settings.provider,
             dry_run=True,
             user_agent=settings.user_agent,
         )
